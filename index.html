@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quran Recitation Validator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .surah-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        input[type="number"], input[type="text"], select {
+            padding: 12px 14px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input[type="number"]:focus, input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        select {
+            cursor: pointer;
+            background: white;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+            border: 2px solid #e0e0e0;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #efefef;
+            border-color: #667eea;
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        .status-label {
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+
+        .status-dot.connected {
+            background: #4caf50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .status-value {
+            color: #666;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        .audio-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .control-item {
+            text-align: center;
+        }
+
+        .control-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            border: 2px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        .control-button:hover:not(:disabled) {
+            transform: scale(1.1);
+            border-color: #667eea;
+        }
+
+        .control-button.recording {
+            background: #ff6b6b;
+            border-color: #ff6b6b;
+            color: white;
+            animation: recording-pulse 1s infinite;
+        }
+
+        @keyframes recording-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+            }
+        }
+
+        .control-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .feedback-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 120px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .feedback-item {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feedback-correct {
+            background: #d4edda;
+            color: #155724;
+            border-left: 3px solid #28a745;
+        }
+
+        .feedback-incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 3px solid #dc3545;
+        }
+
+        .feedback-missed {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 3px solid #ffc107;
+        }
+
+        .feedback-extra {
+            background: #e7d4f5;
+            color: #5a1a8c;
+            border-left: 3px solid #764ba2;
+        }
+
+        .feedback-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 3px solid #17a2b8;
+        }
+
+        .word-display {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .current-word {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            font-family: 'Traditional Arabic', Georgia, serif;
+        }
+
+        .word-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            font-size: 13px;
+        }
+
+        .detail-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .detail-label {
+            opacity: 0.8;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        .stat-item {
+            background: white;
+            border: 2px solid #e0e0e0;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 40px 20px;
+            font-size: 14px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .content {
+                padding: 30px 20px;
+            }
+
+            .surah-selector {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+
+            .word-details {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .audio-controls {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🕌 Quran Recitation Validator</h1>
+            <p>Real-time validation with AI-powered feedback</p>
+        </div>
+
+        <div class="content">
+            <!-- Status -->
+            <div class="section">
+                <div class="section-title">Status</div>
+                <div class="status-box">
+                    <div class="status-label">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span id="statusText">Disconnected</span>
+                    </div>
+                    <div class="status-value" id="statusValue">Ready to connect</div>
+                </div>
+            </div>
+
+            <!-- Error/Success Messages -->
+            <div id="messageContainer"></div>
+
+            <!-- Session Setup -->
+            <div class="section">
+                <div class="section-title">Setup Session</div>
+                <div class="surah-selector">
+                    <div>
+                        <label for="surahSelect">Select Surah</label>
+                        <select id="surahSelect">
+                            <option value="">Choose a Surah...</option>
+                            <option value="1">1 - Al-Fatiha (The Opening)</option>
+                            <option value="2">2 - Al-Baqarah (The Cow)</option>
+                            <option value="3">3 - Al-Imran (The Family of Imran)</option>
+                            <option value="4">4 - An-Nisa (The Women)</option>
+                            <option value="5">5 - Al-Maidah (The Table)</option>
+                            <option value="6">6 - Al-An'am (The Cattle)</option>
+                            <option value="7">7 - Al-A'raf (The Heights)</option>
+                            <option value="8">8 - Al-Anfal (The Spoils)</option>
+                            <option value="9">9 - At-Tawbah (The Repentance)</option>
+                            <option value="10">10 - Yunus (Jonah)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="startAyah">Start Ayah (optional)</label>
+                        <input type="number" id="startAyah" placeholder="Leave empty for auto-detect" min="1">
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" id="createSessionBtn">Create Session</button>
+                    <button class="btn-secondary" id="disconnectBtn" disabled>Disconnect</button>
+                </div>
+            </div>
+
+            <!-- Current Word -->
+            <div class="section" id="wordSection" style="display: none;">
+                <div class="word-display">
+                    <div class="current-word" id="currentWord">بِسْمِ</div>
+                    <div class="word-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Ayah</span>
+                            <span class="detail-value" id="currentAyah">1</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Progress</span>
+                            <span class="detail-value" id="currentProgress">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressBar"></div>
+                </div>
+            </div>
+
+            <!-- Audio Controls -->
+            <div class="section" id="audioSection" style="display: none;">
+                <div class="section-title">Recording</div>
+                
+                <!-- Audio Level Monitor -->
+                <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                    <div style="font-size: 12px; font-weight: 600; color: #333; margin-bottom: 8px;">
+                        Microphone Level
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="flex: 1; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden;">
+                            <div id="audioLevelBar" style="height: 100%; background: linear-gradient(90deg, #4caf50 0%, #ff9800 50%, #f44336 100%); width: 0%; transition: width 0.1s;"></div>
+                        </div>
+                        <span id="audioLevelText" style="font-size: 12px; font-weight: 600; color: #666; min-width: 40px;">0 dB</span>
+                    </div>
+                    <div style="font-size: 11px; color: #999; margin-top: 8px;">
+                        <span id="audioStatus">🔴 No audio detected</span>
+                    </div>
+                </div>
+                
+                <div class="audio-controls">
+                    <div class="control-item">
+                        <button class="control-button" id="startBtn" title="Start Recording">
+                            🎙️
+                        </button>
+                        <div class="control-label">Start</div>
+                    </div>
+                    <div class="control-item">
+                        <button class="control-button" id="pauseBtn" disabled title="Pause Recording">
+                            ⏸️
+                        </button>
+                        <div class="control-label">Pause</div>
+                    </div>
+                    <div class="control-item">
+                        <button class="control-button" id="stopBtn" disabled title="Stop Recording">
+                            ⏹️
+                        </button>
+                        <div class="control-label">Stop</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feedback -->
+            <div class="section">
+                <div class="section-title">Real-Time Feedback</div>
+                <div class="feedback-box" id="feedbackBox">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div>Feedback will appear here</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics -->
+            <div class="section">
+                <div class="section-title">Statistics</div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="statTotal">0</div>
+                        <div class="stat-label">Total Words</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statCorrect">0</div>
+                        <div class="stat-label">Correct</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statMissed">0</div>
+                        <div class="stat-label">Missed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statAccuracy">0%</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            API_URL: 'http://localhost:8000/api/v1',
+            WS_URL: 'ws://localhost:8000/ws/session',
+            CHUNK_SIZE: 2048,
+            SAMPLE_RATE: 16000,
+        };
+
+        // State
+        let state = {
+            sessionId: null,
+            isConnected: false,
+            isRecording: false,
+            isPaused: false,
+            ws: null,
+            audioContext: null,
+            mediaStream: null,
+            processor: null,
+            analyser: null,  // For audio level monitoring
+            stats: {
+                total: 0,
+                correct: 0,
+                missed: 0,
+                incorrect: 0,
+                accuracy: 0
+            },
+            feedbackHistory: []
+        };
+
+        // DOM Elements
+        const elements = {
+            surahSelect: document.getElementById('surahSelect'),
+            startAyah: document.getElementById('startAyah'),
+            createSessionBtn: document.getElementById('createSessionBtn'),
+            disconnectBtn: document.getElementById('disconnectBtn'),
+            startBtn: document.getElementById('startBtn'),
+            pauseBtn: document.getElementById('pauseBtn'),
+            stopBtn: document.getElementById('stopBtn'),
+            statusDot: document.getElementById('statusDot'),
+            statusText: document.getElementById('statusText'),
+            statusValue: document.getElementById('statusValue'),
+            messageContainer: document.getElementById('messageContainer'),
+            wordSection: document.getElementById('wordSection'),
+            audioSection: document.getElementById('audioSection'),
+            currentWord: document.getElementById('currentWord'),
+            currentAyah: document.getElementById('currentAyah'),
+            currentProgress: document.getElementById('currentProgress'),
+            progressBar: document.getElementById('progressBar'),
+            feedbackBox: document.getElementById('feedbackBox'),
+            statTotal: document.getElementById('statTotal'),
+            statCorrect: document.getElementById('statCorrect'),
+            statMissed: document.getElementById('statMissed'),
+            statAccuracy: document.getElementById('statAccuracy'),
+        };
+
+        // Event Listeners
+        elements.createSessionBtn.addEventListener('click', createSession);
+        elements.disconnectBtn.addEventListener('click', disconnect);
+        elements.startBtn.addEventListener('click', startRecording);
+        elements.pauseBtn.addEventListener('click', pauseRecording);
+        elements.stopBtn.addEventListener('click', stopRecording);
+
+        // Create Session
+        async function createSession() {
+            const surahNumber = parseInt(elements.surahSelect.value);
+            const startAyah = elements.startAyah.value ? parseInt(elements.startAyah.value) : null;
+
+            if (!surahNumber) {
+                showMessage('Please select a Surah', 'error');
+                return;
+            }
+
+            try {
+                updateStatus('Creating session...', false);
+                elements.createSessionBtn.disabled = true;
+
+                const response = await fetch(`${CONFIG.API_URL}/sessions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        surah_number: surahNumber,
+                        ...(startAyah && { start_ayah: startAyah })
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                state.sessionId = data.session_id;
+
+                showMessage(`Session created: ${data.session_id.substring(0, 8)}...`, 'success');
+                connectWebSocket();
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+                elements.createSessionBtn.disabled = false;
+            }
+        }
+
+        // Connect WebSocket
+        function connectWebSocket() {
+            try {
+                updateStatus('Connecting...', false);
+                state.ws = new WebSocket(`${CONFIG.WS_URL}/${state.sessionId}`);
+
+                state.ws.onopen = () => {
+                    state.isConnected = true;
+                    updateStatus('Connected', true);
+                    elements.audioSection.style.display = 'block';
+                    elements.wordSection.style.display = 'block';
+                    elements.disconnectBtn.disabled = false;
+                    elements.createSessionBtn.disabled = true;
+                    showMessage('WebSocket connected successfully', 'success');
+                };
+
+                state.ws.onmessage = (event) => {
+                    handleWebSocketMessage(JSON.parse(event.data));
+                };
+
+                state.ws.onerror = (error) => {
+                    showMessage('WebSocket error: Connection failed', 'error');
+                    updateStatus('Error', false);
+                };
+
+                state.ws.onclose = () => {
+                    state.isConnected = false;
+                    updateStatus('Disconnected', false);
+                    stopRecording();
+                };
+            } catch (error) {
+                showMessage(`Error: ${error.message}`, 'error');
+                elements.createSessionBtn.disabled = false;
+            }
+        }
+
+        // Handle WebSocket Messages
+        function handleWebSocketMessage(message) {
+            const event = message.event;
+
+            switch (event) {
+                case 'listening':
+                    handleListeningEvent(message.payload);
+                    break;
+                case 'result':
+                    handleResultEvent(message.payload);
+                    break;
+                case 'finished':
+                    handleFinishedEvent(message.payload);
+                    break;
+                case 'error':
+                    handleErrorEvent(message.payload);
+                    break;
+            }
+        }
+
+        function handleListeningEvent(payload) {
+            elements.currentWord.textContent = payload.word;
+            elements.currentAyah.textContent = payload.ayah;
+            elements.currentProgress.textContent = `${Math.round(payload.progress)}%`;
+            elements.progressBar.style.width = `${payload.progress}%`;
+        }
+
+        function handleResultEvent(payload) {
+            addFeedback(payload);
+            updateStats(payload);
+        }
+
+        function handleFinishedEvent(payload) {
+            showMessage('✅ Surah completed successfully!', 'success');
+            stopRecording();
+        }
+
+        function handleErrorEvent(payload) {
+            showMessage(`⚠️ ${payload.message}`, 'error');
+        }
+
+        // Recording Functions
+        async function startRecording() {
+            if (!state.isConnected) {
+                showMessage('Not connected. Create a session first.', 'error');
+                return;
+            }
+
+            try {
+                // Request microphone with better audio constraints
+                const constraints = {
+                    audio: {
+                        sampleRate: CONFIG.SAMPLE_RATE,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: false,  // Disable AGC to preserve audio dynamics
+                    }
+                };
+                
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                state.mediaStream = stream;
+                state.audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: CONFIG.SAMPLE_RATE
+                });
+                
+                const source = state.audioContext.createMediaStreamSource(stream);
+                
+                // Create analyser for audio level monitoring
+                state.analyser = state.audioContext.createAnalyser();
+                state.analyser.fftSize = 2048;
+                
+                // Create a gain node to amplify quiet audio
+                const gainNode = state.audioContext.createGain();
+                gainNode.gain.value = 3.0;  // Amplify 3x to detect quieter speech
+                
+                // Use AudioWorklet for better audio processing if available
+                const processor = state.audioContext.createScriptProcessor(CONFIG.CHUNK_SIZE, 1, 1);
+                state.processor = processor;
+
+                let maxRMS = 0;
+                let analyserDataArray = new Uint8Array(state.analyser.frequencyBinCount);
+
+                processor.onaudioprocess = (event) => {
+                    if (state.isRecording && !state.isPaused) {
+                        const audioData = event.inputBuffer.getChannelData(0);
+                        
+                        // Calculate RMS for monitoring
+                        let sum = 0;
+                        for (let i = 0; i < audioData.length; i++) {
+                            sum += audioData[i] * audioData[i];
+                        }
+                        const rms = Math.sqrt(sum / audioData.length);
+                        
+                        // Update max RMS for display
+                        if (rms > maxRMS) {
+                            maxRMS = rms;
+                        }
+                        
+                        // Update audio level display
+                        updateAudioLevel(rms, maxRMS);
+                        
+                        // Convert to 16-bit PCM (Whisper expects this format)
+                        const pcm16 = new Int16Array(audioData.length);
+                        for (let i = 0; i < audioData.length; i++) {
+                            // Clamp value to [-1, 1]
+                            let sample = Math.max(-1, Math.min(1, audioData[i]));
+                            // Scale to 16-bit range
+                            pcm16[i] = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+                        }
+                        
+                        // Convert to Float32Array for consistency
+                        const float32 = new Float32Array(pcm16.length);
+                        for (let i = 0; i < pcm16.length; i++) {
+                            float32[i] = pcm16[i] / 32768;  // Normalize back to [-1, 1]
+                        }
+                        
+                        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+                            state.ws.send(JSON.stringify({
+                                type: 'audio_chunk',
+                                data: Array.from(float32)
+                            }));
+                        }
+                    }
+                };
+
+                // Connect with gain amplification
+                source.connect(gainNode);
+                source.connect(state.analyser);  // For monitoring
+                gainNode.connect(processor);
+                processor.connect(state.audioContext.destination);
+
+                state.isRecording = true;
+                state.isPaused = false;
+                state.feedbackHistory = [];
+                elements.feedbackBox.innerHTML = '';
+
+                updateRecordingButtons(true);
+                updateStatus('Recording...', true);
+                showMessage('🎤 Recording started - Speak clearly', 'success');
+            } catch (error) {
+                showMessage(`Microphone access denied: ${error.message}`, 'error');
+            }
+        }
+
+        function updateAudioLevel(rms, maxRMS) {
+            // Convert RMS to dB scale
+            const dB = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+            const dBDisplay = Math.max(-60, dB);  // Clamp to -60 dB minimum
+            const dBNormalized = (dBDisplay + 60) / 60;  // Normalize to 0-1
+            const percentage = Math.min(100, dBNormalized * 100);
+            
+            document.getElementById('audioLevelBar').style.width = percentage + '%';
+            document.getElementById('audioLevelText').textContent = dBDisplay.toFixed(1) + ' dB';
+            
+            // Update status indicator
+            const statusEl = document.getElementById('audioStatus');
+            if (rms > 0.05) {
+                statusEl.textContent = '🟢 Strong signal';
+            } else if (rms > 0.02) {
+                statusEl.textContent = '🟡 Moderate signal';
+            } else if (rms > 0.005) {
+                statusEl.textContent = '🟠 Weak signal - Speak louder';
+            } else {
+                statusEl.textContent = '🔴 No audio detected';
+            }
+        }
+
+        function pauseRecording() {
+            state.isPaused = !state.isPaused;
+            elements.pauseBtn.textContent = state.isPaused ? '▶️' : '⏸️';
+            updateStatus(state.isPaused ? 'Paused' : 'Recording...', true);
+        }
+
+        function stopRecording() {
+            state.isRecording = false;
+            state.isPaused = false;
+
+            if (state.processor) {
+                state.processor.disconnect();
+            }
+
+            if (state.mediaStream) {
+                state.mediaStream.getTracks().forEach(track => track.stop());
+            }
+
+            if (state.audioContext && state.audioContext.state !== 'closed') {
+                state.audioContext.close();
+            }
+
+            if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+                state.ws.send(JSON.stringify({ type: 'close' }));
+            }
+
+            updateRecordingButtons(false);
+            updateStatus('Connected', true);
+            showMessage('⏹️ Recording stopped', 'success');
+        }
+
+        // UI Update Functions
+        function updateRecordingButtons(recording) {
+            elements.startBtn.disabled = recording;
+            elements.pauseBtn.disabled = !recording;
+            elements.stopBtn.disabled = !recording;
+
+            if (recording) {
+                elements.startBtn.classList.add('recording');
+            } else {
+                elements.startBtn.classList.remove('recording');
+                elements.pauseBtn.textContent = '⏸️';
+            }
+        }
+
+        function updateStatus(text, connected) {
+            elements.statusText.textContent = text;
+            elements.statusDot.className = `status-dot ${connected ? 'connected' : ''}`;
+            
+            const statusValue = connected 
+                ? `Session: ${state.sessionId?.substring(0, 8) || 'N/A'}...`
+                : 'Create a session to begin';
+            elements.statusValue.textContent = statusValue;
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `${type}-message`;
+            messageDiv.textContent = message;
+
+            elements.messageContainer.innerHTML = '';
+            elements.messageContainer.appendChild(messageDiv);
+
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                setTimeout(() => messageDiv.remove(), 300);
+            }, 4000);
+        }
+
+        function addFeedback(result) {
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = `feedback-item feedback-${result.status}`;
+
+            const words = result.words.join(' ');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            feedbackDiv.innerHTML = `
+                <strong>${result.status.toUpperCase()}:</strong> ${words}
+                <br><small>${result.message} • ${timestamp}</small>
+            `;
+
+            if (elements.feedbackBox.querySelector('.empty-state')) {
+                elements.feedbackBox.innerHTML = '';
+            }
+
+            elements.feedbackBox.insertBefore(feedbackDiv, elements.feedbackBox.firstChild);
+
+            if (elements.feedbackBox.children.length > 10) {
+                elements.feedbackBox.removeChild(elements.feedbackBox.lastChild);
+            }
+        }
+
+        function updateStats(result) {
+            state.stats.total += result.words.length;
+            
+            if (result.status === 'correct') {
+                state.stats.correct += result.words.length;
+            } else if (result.status === 'missed') {
+                state.stats.missed += result.words.length;
+            } else if (result.status === 'incorrect') {
+                state.stats.incorrect += result.words.length;
+            }
+
+            state.stats.accuracy = state.stats.total > 0 
+                ? Math.round((state.stats.correct / state.stats.total) * 100)
+                : 0;
+
+            elements.statTotal.textContent = state.stats.total;
+            elements.statCorrect.textContent = state.stats.correct;
+            elements.statMissed.textContent = state.stats.missed;
+            elements.statAccuracy.textContent = `${state.stats.accuracy}%`;
+        }
+
+        function disconnect() {
+            stopRecording();
+            if (state.ws) {
+                state.ws.close();
+            }
+            state.sessionId = null;
+            elements.audioSection.style.display = 'none';
+            elements.wordSection.style.display = 'none';
+            elements.createSessionBtn.disabled = false;
+            elements.disconnectBtn.disabled = true;
+            elements.surahSelect.value = '';
+            elements.startAyah.value = '';
+            state.stats = { total: 0, correct: 0, missed: 0, incorrect: 0, accuracy: 0 };
+            updateStats({ words: [], status: 'correct' });
+        }
+    </script>
+</body>
+</html>

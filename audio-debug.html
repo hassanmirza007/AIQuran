@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Debug & Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            background: white;
+            border: 2px solid #e0e0e0;
+            padding: 16px;
+            border-radius: 8px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            line-height: 1.4;
+            margin-bottom: 20px;
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-time {
+            color: #888;
+            flex-shrink: 0;
+        }
+
+        .log-msg {
+            flex: 1;
+        }
+
+        .log-success { color: #00ff00; }
+        .log-error { color: #ff6b6b; }
+        .log-warning { color: #ffd93d; }
+        .log-info { color: #00d4ff; }
+
+        .level-meter {
+            margin-bottom: 20px;
+        }
+
+        .level-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .level-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .level-bar {
+            flex: 1;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .level-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50 0%, #ffc107 50%, #ff5722 100%);
+            width: 0%;
+            transition: width 0.05s;
+        }
+
+        .level-value {
+            min-width: 80px;
+            text-align: right;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .waveform-container {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 200px;
+            border-radius: 4px;
+            background: white;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .clear-btn {
+            background: #999;
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .clear-btn:hover {
+            background: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ Audio Debug & Test</h1>
+
+        <!-- Microphone Check -->
+        <div class="section">
+            <h2>1. Microphone Check</h2>
+            <button id="checkMicrophone">Check Microphone</button>
+            <div id="micStatus"></div>
+        </div>
+
+        <!-- Audio Level Monitor -->
+        <div class="section">
+            <h2>2. Audio Level Monitor</h2>
+            <button id="startMonitor" disabled>Start Monitoring</button>
+            <button id="stopMonitor" disabled>Stop Monitoring</button>
+            
+            <div class="level-meter">
+                <div class="level-label">Microphone Level (RMS)</div>
+                <div class="level-bar-container">
+                    <div class="level-bar">
+                        <div class="level-bar-fill" id="levelBarFill"></div>
+                    </div>
+                    <div class="level-value" id="levelValue">0.000</div>
+                </div>
+            </div>
+
+            <div class="waveform-container">
+                <div class="level-label">Real-time Waveform</div>
+                <canvas id="waveformCanvas"></canvas>
+            </div>
+
+            <div id="audioStats" class="stats" style="display: none;">
+                <div class="stat">
+                    <div class="stat-label">Peak RMS</div>
+                    <div class="stat-value" id="peakRMS">0.000</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Average RMS</div>
+                    <div class="stat-value" id="avgRMS">0.000</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Samples Captured</div>
+                    <div class="stat-value" id="sampleCount">0</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-label">Duration</div>
+                    <div class="stat-value" id="duration">0s</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Silence Detection Test -->
+        <div class="section">
+            <h2>3. Silence Detection Test</h2>
+            <button id="testSilence">Test Silence Detection</button>
+            <div id="silenceStatus"></div>
+        </div>
+
+        <!-- WebSocket Connection Test -->
+        <div class="section">
+            <h2>4. WebSocket Server Check</h2>
+            <button id="testServer">Test Server Connection</button>
+            <div id="serverStatus"></div>
+        </div>
+
+        <!-- Log -->
+        <div class="section">
+            <h2>5. Debug Log</h2>
+            <button class="clear-btn" id="clearLog">Clear Log</button>
+            <div id="logOutput" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        const log = {
+            container: document.getElementById('logOutput'),
+            
+            add(type, message) {
+                const time = new Date().toLocaleTimeString();
+                const entry = document.createElement('div');
+                entry.className = `log-entry`;
+                
+                const typeClass = {
+                    'success': 'log-success',
+                    'error': 'log-error',
+                    'warning': 'log-warning',
+                    'info': 'log-info'
+                }[type] || 'log-info';
+                
+                entry.innerHTML = `
+                    <span class="log-time">[${time}]</span>
+                    <span class="log-msg ${typeClass}">${message}</span>
+                `;
+                
+                this.container.appendChild(entry);
+                this.container.scrollTop = this.container.scrollHeight;
+            },
+            
+            clear() {
+                this.container.innerHTML = '';
+            }
+        };
+
+        document.getElementById('clearLog').addEventListener('click', () => log.clear());
+
+        // Microphone Check
+        document.getElementById('checkMicrophone').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('micStatus');
+            statusDiv.innerHTML = '';
+            
+            try {
+                log.add('info', 'Checking microphone permissions...');
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                const analyser = audioContext.createAnalyser();
+                source.connect(analyser);
+                
+                const tracks = stream.getTracks();
+                const settings = tracks[0].getSettings();
+                
+                log.add('success', `✅ Microphone Access: Granted`);
+                log.add('info', `Sample Rate: ${settings.sampleRate || audioContext.sampleRate} Hz`);
+                log.add('info', `Channel Count: ${settings.channelCount || 'Unknown'}`);
+                
+                const status = document.createElement('div');
+                status.className = 'status success';
+                status.innerHTML = `
+                    <strong>✅ Microphone Available</strong><br>
+                    Sample Rate: ${settings.sampleRate || audioContext.sampleRate} Hz<br>
+                    Device: ${tracks[0].label}
+                `;
+                statusDiv.appendChild(status);
+                
+                document.getElementById('startMonitor').disabled = false;
+                
+                // Cleanup
+                tracks.forEach(t => t.stop());
+                audioContext.close();
+            } catch (error) {
+                log.add('error', `❌ Microphone Error: ${error.message}`);
+                
+                const status = document.createElement('div');
+                status.className = 'status error';
+                status.innerHTML = `<strong>❌ Microphone Error</strong><br>${error.message}`;
+                statusDiv.appendChild(status);
+            }
+        });
+
+        // Audio Level Monitor
+        let monitorState = {
+            isMonitoring: false,
+            analyser: null,
+            animationId: null,
+            peakRMS: 0,
+            totalRMS: 0,
+            sampleCount: 0,
+            startTime: null,
+            dataArray: null
+        };
+
+        document.getElementById('startMonitor').addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                
+                monitorState.analyser = audioContext.createAnalyser();
+                monitorState.analyser.fftSize = 2048;
+                source.connect(monitorState.analyser);
+                
+                monitorState.dataArray = new Uint8Array(monitorState.analyser.frequencyBinCount);
+                monitorState.isMonitoring = true;
+                monitorState.startTime = Date.now();
+                monitorState.sampleCount = 0;
+                monitorState.peakRMS = 0;
+                monitorState.totalRMS = 0;
+                
+                document.getElementById('startMonitor').disabled = true;
+                document.getElementById('stopMonitor').disabled = false;
+                document.getElementById('audioStats').style.display = 'grid';
+                
+                log.add('info', '🎙️ Monitoring started...');
+                
+                monitorLoop();
+            } catch (error) {
+                log.add('error', `Failed to start monitoring: ${error.message}`);
+            }
+        });
+
+        document.getElementById('stopMonitor').addEventListener('click', () => {
+            monitorState.isMonitoring = false;
+            if (monitorState.animationId) {
+                cancelAnimationFrame(monitorState.animationId);
+            }
+            
+            document.getElementById('startMonitor').disabled = false;
+            document.getElementById('stopMonitor').disabled = true;
+            
+            log.add('success', '✅ Monitoring stopped');
+        });
+
+        function monitorLoop() {
+            if (!monitorState.isMonitoring) return;
+            
+            monitorState.analyser.getByteFrequencyData(monitorState.dataArray);
+            
+            // Calculate RMS
+            let sum = 0;
+            for (let i = 0; i < monitorState.dataArray.length; i++) {
+                const normalized = monitorState.dataArray[i] / 255;
+                sum += normalized * normalized;
+            }
+            const rms = Math.sqrt(sum / monitorState.dataArray.length);
+            
+            monitorState.peakRMS = Math.max(monitorState.peakRMS, rms);
+            monitorState.totalRMS += rms;
+            monitorState.sampleCount++;
+            
+            const duration = Math.floor((Date.now() - monitorState.startTime) / 1000);
+            
+            // Update display
+            document.getElementById('levelBarFill').style.width = (rms * 100) + '%';
+            document.getElementById('levelValue').textContent = rms.toFixed(3);
+            document.getElementById('peakRMS').textContent = monitorState.peakRMS.toFixed(3);
+            document.getElementById('avgRMS').textContent = (monitorState.totalRMS / monitorState.sampleCount).toFixed(3);
+            document.getElementById('sampleCount').textContent = monitorState.sampleCount;
+            document.getElementById('duration').textContent = duration + 's';
+            
+            // Draw waveform
+            drawWaveform(monitorState.dataArray);
+            
+            monitorState.animationId = requestAnimationFrame(monitorLoop);
+        }
+
+        function drawWaveform(dataArray) {
+            const canvas = document.getElementById('waveformCanvas');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const sliceWidth = width / dataArray.length;
+            let x = 0;
+            
+            for (let i = 0; i < dataArray.length; i++) {
+                const v = dataArray[i] / 128.0;
+                const y = v * height / 2;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+                
+                x += sliceWidth;
+            }
+            
+            ctx.lineTo(width, height / 2);
+            ctx.stroke();
+        }
+
+        // Server Test
+        document.getElementById('testServer').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('serverStatus');
+            statusDiv.innerHTML = '';
+            
+            try {
+                log.add('info', 'Testing server connection...');
+                
+                const response = await fetch('http://localhost:8000/api/v1/health');
+                if (response.ok) {
+                    log.add('success', '✅ Server is running on port 8000');
+                    
+                    const status = document.createElement('div');
+                    status.className = 'status success';
+                    status.innerHTML = '<strong>✅ Server Running</strong><br>http://localhost:8000 is accessible';
+                    statusDiv.appendChild(status);
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                log.add('error', `❌ Server Error: ${error.message}`);
+                
+                const status = document.createElement('div');
+                status.className = 'status error';
+                status.innerHTML = `<strong>❌ Server Not Accessible</strong><br>${error.message}<br>Make sure the server is running: python -m app.main`;
+                statusDiv.appendChild(status);
+            }
+        });
+
+        log.add('info', 'Audio Debug Tool Ready 🎵');
+    </script>
+</body>
+</html>

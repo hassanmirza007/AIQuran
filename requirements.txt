@@ -1,0 +1,45 @@
+
+# ==============================
+# Core Speech Recognition
+# ==============================
+faster-whisper==1.2.1
+ctranslate2>=4.0.0
+huggingface-hub>=0.20.0
+
+# ==============================
+# Audio Processing
+# ==============================
+sounddevice>=0.4.6
+numpy>=1.24,<2.0
+scipy>=1.10
+
+# ==============================
+# Text Matching / NLP
+# ==============================
+python-Levenshtein==0.26.1
+jellyfish==1.2.1
+
+# ==============================
+# Validation / Config
+# ==============================
+pydantic>=2.6,<3.0
+python-dotenv==1.2.1
+
+# ==============================
+# API / Backend
+# ==============================
+fastapi==0.128.0
+uvicorn==0.42.0
+requests==2.33.1
+
+# ==============================
+# Language Parsing
+# ==============================
+tree-sitter==0.21.3
+tree-sitter-languages==1.10.2
+javalang==0.13.0
+
+# ==============================
+# Optional (recommended for speed)
+# ==============================
+torch>=2.1.0
