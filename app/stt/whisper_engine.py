@@ -7,13 +7,7 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Base Quranic vocabulary prompt — primes Whisper to expect Quranic Arabic.
-# This is the single biggest accuracy improvement over generic Arabic STT.
-QURAN_PROMPT = (
-    "بسم الله الرحمن الرحيم الحمد لله رب العالمين الرحمن الرحيم "
-    "مالك يوم الدين إياك نعبد وإياك نستعين اهدنا الصراط المستقيم "
-    "صراط الذين أنعمت عليهم غير المغضوب عليهم ولا الضالين"
-)
+
 
 # Whisper word-level confidence below this is flagged as uncertain.
 # Words below this threshold are included in the transcript but marked
@@ -35,6 +29,7 @@ class WhisperEngine:
         self.model = WhisperModel(model_size, device="cpu", compute_type="int8")
         self.model_size = model_size
         self._last_word_confidences: list[dict] = []
+        self._last_audio: np.ndarray = np.array([], dtype=np.float32)
         logger.info("Faster Whisper ready")
 
     def transcribe(self, audio: np.ndarray, expected_context: str = "") -> str:
@@ -51,10 +46,10 @@ class WhisperEngine:
             Per-word confidence scores accessible via get_last_word_confidences().
         """
         start = time.perf_counter()
-        
+        self._last_audio = audio
+
         # Build prompt: expected words first, then base Quran vocabulary
-        # prompt = f"{expected_context} {QURAN_PROMPT}".strip() if expected_context else QURAN_PROMPT
-        prompt = expected_context if expected_context else QURAN_PROMPT
+        prompt = expected_context 
         segments, _ = self.model.transcribe(
             audio,
             language="ar",
@@ -90,6 +85,8 @@ class WhisperEngine:
                         "word": w.word.strip(),
                         "confidence": round(w.probability, 3),
                         "low_confidence": w.probability < LOW_CONFIDENCE_CUTOFF,
+                        "start": w.start,
+                        "end": w.end,
                     })
 
         self._last_word_confidences = word_confidences
@@ -124,6 +121,10 @@ class WhisperEngine:
             if not w["low_confidence"]
         ]
         return " ".join(trusted)
+
+    def get_last_audio(self) -> np.ndarray:
+        """Return the raw PCM audio from the most recent transcription call."""
+        return self._last_audio
 
     def get_last_word_confidences(self) -> list[dict]:
         """
