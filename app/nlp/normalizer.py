@@ -89,5 +89,22 @@ def normalize_arabic(text: str) -> str:
 
 def normalize_word(word: str) -> str:
     """Normalize a single word. Same pipeline, no whitespace collapsing needed."""
-    
+
     return normalize_arabic(word)
+
+
+def strip_diacritics(text: str) -> str:
+    """
+    Remove ALL Arabic diacritics (harakat, shadda, sukun, tatweel) for
+    diacritic-insensitive word lookup. Lets 'بِسْمِ' and 'بسم' resolve equal.
+
+    Distinct from the matcher's normalization, which preserves short vowels
+    so vowel errors are detectable — this helper is only for lookups where
+    diacritics must be ignored (e.g. mapping an expected word to its ayah).
+    """
+    nfd = unicodedata.normalize("NFD", text)
+    stripped = "".join(
+        ch for ch in nfd
+        if not (0x064B <= ord(ch) <= 0x065F) and ord(ch) != 0x0640
+    )
+    return unicodedata.normalize("NFC", stripped).strip()

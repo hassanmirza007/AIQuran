@@ -252,10 +252,21 @@ class RecitationService:
                     "message": f"❌ Incorrect — expected: {r['expected']}"
                 })
 
+            elif status == "partial":
+                formatted.append({
+                    "spoken": r["spoken"],
+                    "expected": r["expected"],
+                    "status": "partial",
+                    "message": f"⚠️ Almost — minor diacritic slip: {r['expected']}"
+                })
+
             elif status == "extra":
                 formatted.append({
                     "spoken": r["spoken"],
-                    "expected": "-",
+                    # Preserve the engine's contextual expected word (the word at the
+                    # pointer when this extra occurred). Only fall back to "-" when the
+                    # engine had none (extra spoken past the end of the ayah).
+                    "expected": r.get("expected") or "-",
                     "status": "extra",
                     "message": f"🚨 Extra word: {r['spoken']}"
                 })

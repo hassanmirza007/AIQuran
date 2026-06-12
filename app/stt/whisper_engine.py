@@ -25,8 +25,8 @@ class WhisperEngine:
             "medium"   — recommended for production
             "large-v3" — best Arabic accuracy, needs GPU for real-time use
         """
-        logger.info(f"Loading Faster Whisper [{model_size}]...")
-        self.model = WhisperModel(model_size, device="cpu", compute_type="int8")
+        logger.info("Loading fine-tuned Quran Whisper [whisper-small-quran-ct2]...")
+        self.model = WhisperModel("models/whisper-small-quran-ct2", device="cpu", compute_type="int8")
         self.model_size = model_size
         self._last_word_confidences: list[dict] = []
         self._last_audio: np.ndarray = np.array([], dtype=np.float32)
@@ -48,15 +48,15 @@ class WhisperEngine:
         start = time.perf_counter()
         self._last_audio = audio
 
-        # Build prompt: expected words first, then base Quran vocabulary
-        prompt = expected_context 
+        # Fine-tuned Quran model needs no prompt — priming would autocorrect user
+        # mistakes back to the expected text, hiding errors from validation.
         segments, _ = self.model.transcribe(
             audio,
             language="ar",
-            initial_prompt=prompt,
-            beam_size=3,
-            best_of=3,
-            temperature=0.2,                  # greedy — stops hallucinations
+            initial_prompt=None,
+            beam_size=1,                       # greedy decoding (fine-tuned model needs no search)
+            best_of=1,
+            temperature=0.0,                   # deterministic
             condition_on_previous_text=False,  # prevents drift across loop iterations
             word_timestamps=True,              # required for per-word confidence
             vad_filter=True,                   # skip silent audio segments

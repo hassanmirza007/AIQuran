@@ -38,8 +38,3 @@ requests==2.33.1
 tree-sitter==0.21.3
 tree-sitter-languages==1.10.2
 javalang==0.13.0
-
-# ==============================
-# Optional (recommended for speed)
-# ==============================
-torch>=2.1.0

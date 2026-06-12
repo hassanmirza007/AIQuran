@@ -3,9 +3,38 @@
 import time
 from typing import List, Dict, Optional
 from app.nlp.matcher import best_match_in_window, similarity_score
+from app.nlp.normalizer import normalize_arabic
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# A spoken word that fails to match the expected word but whose similarity is at
+# least this high is treated as a MISPRONUNCIATION ('incorrect') of the expected
+# word rather than an unrelated insertion ('extra'). Calibrated from real data:
+# genuine attempts score ~0.57-0.69, unrelated/hallucinated words score ~0.0-0.11.
+# Tune upward if hallucinations leak in as 'incorrect'; downward if real
+# mispronunciations are missed and shown as 'extra'.
+INCORRECT_THRESHOLD = 0.45
+
+# Split-word merge: when a single token fails to match but concatenating it with
+# the next token(s) scores at least this high AND improves on the single token by
+# at least MERGE_MIN_GAIN, treat the tokens as one merged word (Whisper split it).
+MERGE_PARTIAL_THRESHOLD = 0.60
+MERGE_MIN_GAIN          = 0.10
+MERGE_MAX_EXTRA_TOKENS  = 2   # merge up to 3 tokens total (current + 2 following)
+
+# Phonetic folding: collapse emphatic/interdental consonants a reciter or the STT
+# model conflates with their plain counterparts, so same-SOUNDING words
+# (نَصْطَعِينَ vs نَسْتَعِينُ) are treated as minor 'partial' slips rather than hard
+# errors. Conservative set — only well-known near-homophone pairs.
+_PHONETIC_FOLD = str.maketrans({
+    "ص": "س",  # ص → س
+    "ث": "س",  # ث → س
+    "ط": "ت",  # ط → ت
+    "ض": "د",  # ض → د
+    "ظ": "ز",  # ظ → ز
+    "ذ": "ز",  # ذ → ز
+})
 
 
 class QuranNavigator:
@@ -233,10 +262,85 @@ class SequenceEngineV2:
                     pass
 
             # ============================================================
-            # PRIORITY 4: Mark as extra (no match found anywhere)
+            # PRIORITY 4: partial / merged-split / incorrect / extra
             # ============================================================
-            # Include what was expected at this position so user knows context
+            # current_score = this spoken word's similarity to the CURRENT expected
+            # word (computed in PRIORITY 1; j unchanged since). Decide, in order:
+            #   (a) same letters / near-homophone (phonetic key equal)   → 'partial'
+            #   (b) Whisper split one word into 2-3 tokens               → merged 'partial'/'correct'
+            #   (c) recognizable attempt (score >= INCORRECT_THRESHOLD)  → 'incorrect'
+            #   (d) otherwise                                            → 'extra'
+            # (a)-(c) consume the expected word (advance j); 'extra' does not.
             next_expected = expected_sequence[j] if j < len(expected_sequence) else None
+
+            if next_expected is not None:
+                exp_key = self._phonetic_key(next_expected)
+
+                # (a) Single-token near-homophone — differs only in diacritics and/or
+                #     emphatic/interdental consonants (نَصْطَعِينَ vs نَسْتَعِينُ) → partial.
+                if self._phonetic_key(spoken) == exp_key:
+                    results.append({
+                        "spoken": spoken,
+                        "expected": next_expected,
+                        "status": "partial"
+                    })
+                    logger.debug(
+                        f"Partial (same-sounding): '{spoken}' vs '{next_expected}' "
+                        f"(score={current_score:.2f})"
+                    )
+                    j += 1
+                    i += 1
+                    continue
+
+                # (b) Split-word merge: Whisper may have split one expected word into
+                #     consecutive tokens (عَنْ + أَمْتَ → أَنْعَمْتَ). Concatenate the
+                #     next token(s); if the combination matches (or near-matches with
+                #     a real gain over the single token), emit ONE merged entry.
+                merged_raw = spoken
+                merged_done = False
+                for k in range(1, MERGE_MAX_EXTRA_TOKENS + 1):
+                    if i + k >= len(spoken_words):
+                        break
+                    merged_raw = merged_raw + spoken_words[i + k]
+                    m_score = similarity_score(self._normalize(merged_raw), current_expected)
+                    if m_score >= adaptive_threshold or self._phonetic_key(merged_raw) == exp_key:
+                        m_status = "correct" if m_score >= adaptive_threshold else "partial"
+                    elif m_score >= MERGE_PARTIAL_THRESHOLD and m_score >= current_score + MERGE_MIN_GAIN:
+                        m_status = "partial"
+                    else:
+                        continue  # not good enough yet — try adding one more token
+                    merged_spoken = " ".join(spoken_words[i:i + k + 1])
+                    results.append({
+                        "spoken": merged_spoken,
+                        "expected": next_expected,
+                        "status": m_status
+                    })
+                    logger.debug(
+                        f"Merged split word ({m_status}): '{merged_spoken}' → "
+                        f"'{next_expected}' (merged={m_score:.2f}, single={current_score:.2f})"
+                    )
+                    j += 1
+                    i += k + 1
+                    merged_done = True
+                    break
+                if merged_done:
+                    continue
+
+                # (c) Recognizable single-token attempt at this word → incorrect.
+                if current_score >= INCORRECT_THRESHOLD:
+                    results.append({
+                        "spoken": spoken,
+                        "expected": next_expected,
+                        "status": "incorrect"
+                    })
+                    logger.debug(
+                        f"Incorrect (mispronunciation): '{spoken}' vs '{next_expected}' "
+                        f"(score={current_score:.2f}, >= {INCORRECT_THRESHOLD})"
+                    )
+                    j += 1
+                    i += 1
+                    continue
+
             results.append({
                 "spoken": spoken,
                 "expected": next_expected,  # Show what was expected at this position
@@ -489,6 +593,15 @@ class SequenceEngineV2:
         else:
             return 0.90  # Very low confidence - VERY STRICT (near-exact only)
 
+    def _phonetic_key(self, word: str) -> str:
+        """
+        Letter-skeleton key for 'sounds-the-same' comparison: strip all diacritics
+        (via normalize_arabic) then fold emphatic/interdental consonants to their
+        plain counterparts. Two words with the same key differ only in diacritics
+        and/or near-homophone consonants → a 'partial' (minor) slip, not an error.
+        """
+        return normalize_arabic(word).translate(_PHONETIC_FOLD)
+
     def _get_current_ayah_words(self):
         """Get words from current ayah (using navigator for backward compat)."""
         if self.navigator.current_ayah_index >= len(self.quran_data):
@@ -521,7 +634,9 @@ class SequenceEngineV2:
         # \u064B-\u0652: Fathatan, Dammatan, Fatha, Damma, Kasra, Sukun, Shadda, etc.
         # \u0670: Alef above
         # \u0640: Tatweel
-        diacritics = "\u064B\u064C\u064D\u064E\u064F\u0650\u0651\u0652\u0670\u0640"
+        # Strip ONLY shadda/sukun/superscript-alef/tatweel (model-inconsistent).
+        # PRESERVE fatha/damma/kasra (+tanwin) so vowel errors are detectable.
+        diacritics = "\u0651\u0652\u0670\u0640"
         for diacritic in diacritics:
             word = word.replace(diacritic, "")
         
