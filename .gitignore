@@ -17,3 +17,12 @@ __pycache__/
 
 # Logs
 *.log
+
+#node modules
+node_modules/
+
+#recordings
+
+# Model files
+models
+models/

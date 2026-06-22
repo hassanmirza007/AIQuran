@@ -11,9 +11,8 @@ SAMPLE_RATE = 16000
 MIN_CHUNK_SECONDS = 1.0  # Reduced from 1.5s for faster response
 MIN_SAMPLES = int(SAMPLE_RATE * MIN_CHUNK_SECONDS)
 
-# Silence detection for stream-based recording (more sensitive for speech detection)
-SILENCE_RMS_THRESHOLD = 0.004  # Reduced from 0.008 for better speech detection
-SILENCE_FRAMES_REQUIRED = int(SAMPLE_RATE * 0.6)   # 0.6s of silence = end of phrase (reduced from 0.8s)
+SILENCE_RMS_THRESHOLD   = 0.008   # RMS energy below this = silence
+SILENCE_FRAMES_REQUIRED = int(SAMPLE_RATE * 0.6)   # 0.6s of silence = end of phrase
 
 
 class AudioStreamBuffer:
@@ -41,14 +40,14 @@ class AudioStreamBuffer:
         """Add a new audio chunk (list of float32 samples)."""
         self._samples.extend(chunk)
 
-        # Convert to numpy for analysis
         chunk_np = np.array(chunk, dtype=np.float32)
-        
-        # Calculate RMS (Root Mean Square) for silence detection
         rms = float(np.sqrt(np.mean(chunk_np ** 2))) if len(chunk_np) > 0 else 0.0
-        
-        # Add some logging for debugging
-        logger.debug(f"Audio chunk RMS: {rms:.6f}, samples so far: {len(self._samples)}, speech_started: {self._speech_started}")
+
+        logger.debug(
+            f"Audio chunk RMS: {rms:.6f}, samples: {len(self._samples)}, "
+            f"speech_started: {self._speech_started}, "
+            f"silent_samples: {self._silent_samples}"
+        )
 
         if rms > SILENCE_RMS_THRESHOLD:
             self._speech_started = True
@@ -57,13 +56,6 @@ class AudioStreamBuffer:
             self._silent_samples += len(chunk)
 
     def ready(self) -> bool:
-        """
-        Return True when enough audio has been buffered and speech has ended.
-        Criteria:
-          1. At least MIN_SAMPLES of audio collected.
-          2. Speech was detected (non-silent chunk received).
-          3. Followed by SILENCE_FRAMES_REQUIRED samples of silence (phrase ended).
-        """
         if len(self._samples) < MIN_SAMPLES:
             return False
         if not self._speech_started:
@@ -76,7 +68,7 @@ class AudioStreamBuffer:
 
     def reset(self):
         """Clear the buffer after a transcription has been dispatched."""
-        self._samples = []
+        self._samples        = []
         self._silent_samples = 0
         self._speech_started = False
 

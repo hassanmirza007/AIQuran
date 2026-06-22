@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import router
 from app.api.websocket import ws_router
+from app.api.ws_recitation import recitation_router
 from app.utils.config import config
 from app.utils.logger import get_logger
 
@@ -29,6 +30,7 @@ app.add_middleware(
 
 app.include_router(router)
 app.include_router(ws_router)
+app.include_router(recitation_router)
 
 
 @app.on_event("startup")

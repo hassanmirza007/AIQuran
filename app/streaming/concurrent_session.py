@@ -145,6 +145,35 @@ class ConcurrentRecitationSession:
         self._overlap_tail = None      # last OVERLAP_SECONDS of the previous fresh recording
         self._prev_transcript = ""     # full transcript of the previous chunk (for stitching)
 
+        # Optional WebSocket event sink (set via set_ws_mode). When present, the
+        # validation loop emits transcript/validation_result events and start()
+        # emits a summary event, in addition to the normal terminal printing.
+        self._ws_cb: Optional[Callable[[str, dict], None]] = None
+
+    def set_ws_mode(self, event_cb: Callable[[str, dict], None]) -> None:
+        """
+        Route session events to a WebSocket sink instead of (well, in addition to)
+        the terminal. event_cb(event_type, payload) is called from the validation
+        thread for 'transcript' and 'validation_result', and from start() for
+        'summary'. Terminal printing still happens, so this is non-destructive.
+        """
+        self._ws_cb = event_cb
+
+    def _emit(self, event_type: str, payload: dict) -> None:
+        """Forward an event to the WebSocket sink if one is registered."""
+        if self._ws_cb is not None:
+            try:
+                self._ws_cb(event_type, payload)
+            except Exception as e:
+                logger.error(f"ws event_cb error on '{event_type}': {e}")
+
+    def _pointer(self) -> dict:
+        """Current expected position from the state manager."""
+        return {
+            "ayah":       self.service.state_manager.get_current_ayah_number(),
+            "word_index": self.service.state_manager.get_state().word_index,
+        }
+
     def start(self):
         """
         Start the concurrent session.
@@ -195,6 +224,14 @@ class ConcurrentRecitationSession:
         print(f"[PERF] session_complete took {elapsed_ms:.2f} ms")
         logger.info("Concurrent session complete")
         self._print_summary()
+
+        # Push the end-of-session summary to the WebSocket client. ws_recitation
+        # transforms _session_results (with _ayah_index/status) into the
+        # frontend's {ayah, type, expected, spoken} shape.
+        self._emit("summary", {
+            "mistakes": list(self._session_results),
+            "stats":    self.service.get_stats(),
+        })
 
     # =====================================================================
     # OVERLAP STITCHING
@@ -453,6 +490,13 @@ class ConcurrentRecitationSession:
                         logger.debug(f"Validation: Empty transcript (job #{job.id})")
                         continue
 
+                    # Surface the raw transcript before alignment (WS only)
+                    self._emit("transcript", {"text": job.transcript})
+
+                    # Snapshot the expected pointer BEFORE validation so the WS layer
+                    # can attach (ayah, word_index) to each result entry.
+                    pre = self._pointer()
+
                     # Validate transcript (existing RecitationService method)
                     # This call mutates RecitationService state (SINGLE WRITER)
                     validation_start = time.perf_counter()
@@ -469,6 +513,15 @@ class ConcurrentRecitationSession:
                             expected = r.get("expected") or ""
                             ayah_idx = self._ayah_index_for_expected(expected)
                             self._session_results.append({**r, "_ayah_index": ayah_idx})
+
+                    # Emit per-word validation to the WebSocket (positions attached
+                    # server-side in ws_recitation via _pre_ayah/_pre_word).
+                    self._emit("validation_result", {
+                        "results":         results,
+                        "current_pointer": self._pointer(),
+                        "_pre_ayah":       pre["ayah"],
+                        "_pre_word":       pre["word_index"],
+                    })
 
                     # Print results using printer function
                     self.printer_fn(results)
