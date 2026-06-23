@@ -17,3 +17,15 @@ __pycache__/
 
 # Logs
 *.log
+
+#node modules
+node_modules/
+
+#recordings
+data/
+
+# Converted STT model (large binary, regenerate via ct2-transformers-converter)
+models/
+
+#claude-settings
+.claude/
